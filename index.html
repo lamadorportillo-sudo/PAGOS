@@ -188,6 +188,7 @@
 
         .form-card { background-color: var(--color-card); border-radius: 16px; padding: 35px; box-shadow: var(--shadow-premium); max-width: 900px; margin: 0 auto; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 25px; }
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-control { padding: 12px; border: 1.5px solid #E2E8F0; border-radius: 8px; font-family: var(--font-main); font-size: 0.95rem; background-color: #F8FAFC; }
         .form-control:focus { outline: none; border-color: var(--color-secundario); background-color: white; }
@@ -473,7 +474,7 @@
             }
         }
 
-        // CONTROL DE CARGA ULTRA-COMPATIBLE CON NUBE Y DISCO LOCAL (MÉTODO GET + JSONP DE CONTINGENCIA)
+        // CONTROL DE CARGA ULTRA-COMPATIBLE CON NUBE Y DISCO LOCAL CORREGIDO
         function cargarPagosDesdeSheets() {
             const tbody = document.getElementById("pagoHistorialTableBody");
             
@@ -491,6 +492,7 @@
                 consecutivoPago = registrosPagosDB.length > 0 ? registrosPagosDB.length + 1 : 1;
                 document.getElementById("pago_n").value = consecutivoPago;
                 renderHistorialPagosTable();
+                updateAllProjectSelectors(); // Actualiza selectores inmediatamente al cargar datos
             })
             .catch(error => {
                 console.log("Activando plan B JSONP para entornos locales o restricciones de red...");
@@ -504,6 +506,7 @@
                     consecutivoPago = registrosPagosDB.length > 0 ? registrosPagosDB.length + 1 : 1;
                     document.getElementById("pago_n").value = consecutivoPago;
                     renderHistorialPagosTable();
+                    updateAllProjectSelectors(); // Actualiza selectores también en el Plan B
                     delete window.jsonpCallback;
                 };
 
@@ -549,7 +552,6 @@
             }).join('');
         }
 
-        // ENVÍO DE DATOS ENMASCARADO PARA EVITAR ALERTAS CORS DEL NAVEGADOR
         function guardarPagoDirecto() {
             const proy = document.getElementById("pago_proyecto").value.trim();
             const concepto = document.getElementById("pago_concepto").value;
@@ -623,16 +625,38 @@
             });
         }
 
+        // SELECTORES DINÁMICOS CORREGIDOS: INCLUYEN PROYECTOS FIJOS Y PROYECTOS INGRESADOS EN LA NUBE
         function updateAllProjectSelectors() {
             ["reportProjectSelect", "bitacoraProjectSelect", "notasProjectSelect"].forEach(id => {
                 const select = document.getElementById(id);
                 if(select) {
                     const current = select.value;
                     select.innerHTML = "";
+                    
+                    // Set para garantizar elementos únicos sin duplicación
+                    const nombresUnicos = new Set();
+
+                    // 1. Añadimos proyectos locales predefinidos
                     proyectosDB.forEach(p => {
-                        const opt = document.createElement("option"); opt.value = p.nombre; opt.innerText = p.nombre; select.appendChild(opt);
+                        if(p.nombre) nombresUnicos.add(p.nombre.trim());
                     });
-                    if(current && proyectosDB.some(x => x.nombre === current)) select.value = current;
+
+                    // 2. Añadimos proyectos que se hayan ingresado dinámicamente en los pagos
+                    registrosPagosDB.forEach(pago => {
+                        if(pago["PROYECTO"]) {
+                            nombresUnicos.add(pago["PROYECTO"].trim());
+                        }
+                    });
+
+                    // Construimos las opciones en el elemento select HTML
+                    nombresUnicos.forEach(nombreProyecto => {
+                        const opt = document.createElement("option"); 
+                        opt.value = nombreProyecto; 
+                        opt.innerText = nombreProyecto; 
+                        select.appendChild(opt);
+                    });
+
+                    if(current && nombresUnicos.has(current)) select.value = current;
                 }
             });
         }
