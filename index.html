@@ -425,7 +425,7 @@
     <footer class="footer"><p>© 2026 Unidad de Proyectos Municipales.</p></footer>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZU3MSnVqdqCMZkbtRjspHJsGjFugXdu_O_F8ta1ARO7S2Tope5p7Z8eDGF5nI2HYB/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyabV3_t61q9-WGLQ-mO36kwYHR4XpLlqdrFIioPzFxZw6j6oCCWijoHXk03UQ_zBta/exec";
 
         const proyectosIniciales = [
             { id: 1, imagen: "imagenes/centro de salud.jpg", nombre: "Centro de Salud", descripcionShort: "Reposición del CIS Gabino Argueta (Los Planes): Obra de L 9,173,460.20 finalizada al 100%.", descripcionFull: "Reposición del CIS Gabino Argueta (Los Planes): Inversión final de L 9,173,460.20 al 100% de ejecución física y áreas especializadas." },
@@ -476,7 +476,14 @@
         // CONTROL DE CARGA COMPATIBLE CON EJECUCIÓN LOCAL DESDE DISCO DURO (MÉTODO GET + JSONP)
         function cargarPagosDesdeSheets() {
             const tbody = document.getElementById("pagoHistorialTableBody");
-            
+            // Agrega esto al inicio de tu función guardarPagoDirecto()
+const requiredFields = ["pago_fecha_cheque", "pago_orden", "pago_contratista", "pago_proyecto"];
+for (let field of requiredFields) {
+    if (!document.getElementById(field).value) {
+        alert("⚠️ Por favor completa el campo: " + field.replace("pago_", "").toUpperCase());
+        return; 
+    }
+}
             fetch(WEB_APP_URL, {
                 method: "GET",
                 mode: "cors",
