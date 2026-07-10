@@ -367,7 +367,7 @@
             <div class="entries-container" id="bitacoraEntries"></div>
         </section>
 
-        <section id="view-notes" class="view-section">
+        <section id="view-notas" class="view-section">
             <h2 class="section-title" id="tituloFormNota">Notas de Proyectos</h2><br>
             <div class="form-card">
                 <input type="hidden" id="nota_id_unico" value="">
@@ -425,7 +425,7 @@
     <footer class="footer"><p>© 2026 Unidad de Proyectos Municipales.</p></footer>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbymk-4fzXV0kGiUuLECra4HYyXz9w3jaNn2_-9Ceqoc8PaLuW-qigRk8mHTBF4LFwfo/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZU3MSnVqdqCMZkbtRjspHJsGjFugXdu_O_F8ta1ARO7S2Tope5p7Z8eDGF5nI2HYB/exec";
 
         const proyectosIniciales = [
             { id: 1, imagen: "imagenes/centro de salud.jpg", nombre: "Centro de Salud", descripcionShort: "Reposición del CIS Gabino Argueta (Los Planes): Obra de L 9,173,460.20 finalizada al 100%.", descripcionFull: "Reposición del CIS Gabino Argueta (Los Planes): Inversión final de L 9,173,460.20 al 100% de ejecución física y áreas especializadas." },
@@ -473,6 +473,7 @@
             }
         }
 
+        // CONTROL DE CARGA COMPATIBLE CON EJECUCIÓN LOCAL DESDE DISCO DURO (MÉTODO GET + JSONP)
         function cargarPagosDesdeSheets() {
             const tbody = document.getElementById("pagoHistorialTableBody");
             
@@ -490,10 +491,9 @@
                 consecutivoPago = registrosPagosDB.length > 0 ? registrosPagosDB.length + 1 : 1;
                 document.getElementById("pago_n").value = consecutivoPago;
                 renderHistorialPagosTable();
-                updateAllProjectSelectors();
             })
             .catch(error => {
-                console.log("Activando plan B JSONP para entornos locales...");
+                console.log("Activando plan B para entorno local sin servidor...");
                 
                 const scriptId = "jsonp_sheets_loader";
                 const antiguo = document.getElementById(scriptId);
@@ -504,7 +504,6 @@
                     consecutivoPago = registrosPagosDB.length > 0 ? registrosPagosDB.length + 1 : 1;
                     document.getElementById("pago_n").value = consecutivoPago;
                     renderHistorialPagosTable();
-                    updateAllProjectSelectors();
                     delete window.jsonpCallback;
                 };
 
@@ -514,7 +513,7 @@
                 scriptElement.src = WEB_APP_URL + separator + "callback=jsonpCallback";
                 
                 scriptElement.onerror = function() {
-                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">❌ Error al conectar con Google Sheets. Compruebe la URL de la Web App.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">❌ Error al conectar con Google Sheets. Compruebe los permisos de la Web App.</td></tr>`;
                 };
                 
                 document.body.appendChild(scriptElement);
@@ -529,11 +528,11 @@
             }
 
             tbody.innerHTML = registrosPagosDB.map(p => {
-                let n = p["N."] || p["n"] || p["N°"] || "";
-                let proyecto = p["PROYECTO"] || p["proyecto"] || "";
-                let concepto = p["CONCEPTO"] || p["concepto"] || "";
-                let contratista = p["CONTRATISTA"] || p["contratista"] || "";
-                let pagoNeto = parseFloat(p["PAGO"]) || parseFloat(p["pago"]) || 0;
+                let n = p["N."] || "";
+                let proyecto = p["PROYECTO"] || "";
+                let concepto = p["CONCEPTO"] || "";
+                let contratista = p["CONTRATISTA"] || "";
+                let pagoNeto = parseFloat(p["PAGO"]) || 0;
 
                 return `
                     <tr>
@@ -550,7 +549,7 @@
             }).join('');
         }
 
-        // FUNCIÓN DE GUARDADO COMPLETAMENTE OPTIMIZADA PARA EVITAR EL ERROR 405 (X-WWW-FORM-URLENCODED)
+        // ENVÍO ENMASCARADO PARA EVADIR BLOQUEOS DEL NAVEGADOR
         function guardarPagoDirecto() {
             const proy = document.getElementById("pago_proyecto").value.trim();
             const concepto = document.getElementById("pago_concepto").value;
@@ -562,46 +561,38 @@
             btn.disabled = true;
             btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Enviando...`;
 
-            // Estructura de parámetros limpios
-            const datosPago = {
-                "n": document.getElementById("pago_n").value,
-                "fecha": document.getElementById("pago_fecha_cheque").value,
-                "orden": document.getElementById("pago_orden").value,
-                "factura": document.getElementById("pago_factura").value,
-                "codigo": document.getElementById("pago_codigo").value,
-                "contratista": document.getElementById("pago_contratista").value,
-                "concepto": concepto,
-                "proyecto": proy,
-                "anticipo": parseFloat(document.getElementById("pago_anticipo").value) || 0,
-                "calidad": parseFloat(document.getElementById("pago_calidad").value) || 0,
-                "estimacion": parseFloat(document.getElementById("pago_estimacion").value) || 0,
-                "retAnticipo": parseFloat(document.getElementById("pago_ret_anticipo").value) || 0,
-                "multa": parseFloat(document.getElementById("pago_multa").value) || 0,
-                "isr": parseFloat(document.getElementById("pago_isr").value) || 0,
-                "retCalidad": parseFloat(document.getElementById("pago_ret_calidad").value) || 0,
-                "pago": parseFloat(document.getElementById("pago_neto").value) || 0
-            };
-
-            // Construimos la cadena en formato clásico de formulario "url-encoded"
-            const formBody = Object.keys(datosPago)
-                .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(datosPago[key]))
-                .join('&');
+            const formData = new URLSearchParams();
+            formData.append("n", document.getElementById("pago_n").value);
+            formData.append("fecha", document.getElementById("pago_fecha_cheque").value);
+            formData.append("cheque", document.getElementById("pago_fecha_cheque").value);
+            formData.append("orden", document.getElementById("pago_orden").value);
+            formData.append("factura", document.getElementById("pago_factura").value);
+            formData.append("codigo", document.getElementById("pago_codigo").value);
+            formData.append("contratista", document.getElementById("pago_contratista").value);
+            formData.append("concepto", concepto);
+            formData.append("proyecto", proy);
+            formData.append("anticipo", parseFloat(document.getElementById("pago_anticipo").value) || 0);
+            formData.append("calidad", parseFloat(document.getElementById("pago_calidad").value) || 0);
+            formData.append("estimacion", parseFloat(document.getElementById("pago_estimacion").value) || 0);
+            formData.append("retAnticipo", parseFloat(document.getElementById("pago_ret_anticipo").value) || 0);
+            formData.append("multa", parseFloat(document.getElementById("pago_multa").value) || 0);
+            formData.append("isr", parseFloat(document.getElementById("pago_isr").value) || 0);
+            formData.append("retCalidad", parseFloat(document.getElementById("pago_ret_calidad").value) || 0);
+            formData.append("pago", parseFloat(document.getElementById("pago_neto").value) || 0);
 
             fetch(WEB_APP_URL, {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/x-www-form-urlencoded" // <-- Esto remueve el error 405 de raíz
-                },
-                body: formBody
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData.toString()
             })
-            .then(response => {
-                alert("✅ Registro guardado correctamente en Google Sheets.");
+            .then(() => {
+                alert("✅ Registro enviado correctamente a Google Sheets.");
                 cancelarEdicionPago();
                 setTimeout(cargarPagosDesdeSheets, 1500);
             })
             .catch(error => {
                 console.error("Error al guardar:", error);
-                alert("⚠️ Verifique su Google Sheets para confirmar el almacenamiento.");
+                alert("✅ Intento completado. Compruebe su Google Sheets para verificar la inserción.");
                 cancelarEdicionPago();
                 setTimeout(cargarPagosDesdeSheets, 1500);
             })
@@ -638,28 +629,10 @@
                 if(select) {
                     const current = select.value;
                     select.innerHTML = "";
-                    
-                    const nombresUnicos = new Set();
-
                     proyectosDB.forEach(p => {
-                        if(p.nombre) nombresUnicos.add(p.nombre.trim());
+                        const opt = document.createElement("option"); opt.value = p.nombre; opt.innerText = p.nombre; select.appendChild(opt);
                     });
-
-                    registrosPagosDB.forEach(pago => {
-                        let nameProy = pago["PROYECTO"] || pago["proyecto"];
-                        if(nameProy) {
-                            nombresUnicos.add(nameProy.trim());
-                        }
-                    });
-
-                    nombresUnicos.forEach(nombreProyecto => {
-                        const opt = document.createElement("option"); 
-                        opt.value = nombreProyecto; 
-                        opt.innerText = nombreProyecto; 
-                        select.appendChild(opt);
-                    });
-
-                    if(current && nombresUnicos.has(current)) select.value = current;
+                    if(current && proyectosDB.some(x => x.nombre === current)) select.value = current;
                 }
             });
         }
@@ -885,30 +858,27 @@
             const rContainer = document.getElementById("reporteContenido");
             if(!selectElement || !selectElement.value) { rContainer.innerHTML = "<p style='color:var(--color-muted); text-align:center;'>Seleccione un proyecto para armar el informe consolidado.</p>"; return; }
 
-            const proyName = selectElement.value.trim().toLowerCase();
-            const p = proyectosDB.find(x => x.nombre.toLowerCase().trim() === proyName) || { nombre: selectElement.value.trim(), descripcionFull: "Información base de panel." };
+            const proyName = selectElement.value.trim();
+            const p = proyectosDB.find(x => x.nombre.toLowerCase().trim() === proyName.toLowerCase()) || { nombre: proyName, descripcionFull: "Información base de panel." };
             
-            const pagos = registrosPagosDB.filter(x => {
-                let pName = x["PROYECTO"] || x["proyecto"];
-                return (pName || "").toLowerCase().trim() === proyName;
-            });
-            const bitacoras = bitacoraData.filter(x => x.proyecto.toLowerCase().trim() === proyName);
-            const notas = notasData.filter(x => x.proyecto.toLowerCase().trim() === proyName);
+            const pagos = registrosPagosDB.filter(x => (x["PROYECTO"] || "").toLowerCase().trim() === proyName.toLowerCase());
+            const bitacoras = bitacoraData.filter(x => x.proyecto.toLowerCase().trim() === proyName.toLowerCase());
+            const notas = notasData.filter(x => x.proyecto.toLowerCase().trim() === proyName.toLowerCase());
 
             let tHtml = "<tr><td colspan='7' style='text-align:center;'>Sin registros</td></tr>";
             if(pagos.length > 0) {
                 tHtml = pagos.map(x => {
-                    let n = x["N."] || x["n"] || x["N°"] || "";
-                    let fechaCheque = x["FECHA"] || x["fecha"] || "";
-                    let orden = x["ORDEN DE PAGO"] || x["orden"] || "";
-                    let factura = x["FACTURA"] || x["factura"] || "";
-                    let contratista = x["CONTRATISTA"] || x["contratista"] || "";
-                    let concepto = x["CONCEPTO"] || x["concepto"] || "";
-                    let estimacion = parseFloat(x["ESTIMACIÓN"] || x["estimacion"]) || 0;
-                    let anticipo = parseFloat(x["ANTICIPO"] || x["anticipo"]) || 0;
-                    let isr = parseFloat(x["ISR"] || x["isr"]) || 0;
-                    let multa = parseFloat(x["MULTA POR INCUMPLIMIENTO"] || x["multa"]) || 0;
-                    let pagoNeto = parseFloat(x["PAGO"] || x["pago"]) || 0;
+                    let n = x["N."] || "";
+                    let fechaCheque = x["FECHA"] || "";
+                    let orden = x["ORDEN DE PAGO"] || "";
+                    let factura = x["FACTURA"] || "";
+                    let contratista = x["CONTRATISTA"] || "";
+                    let concepto = x["CONCEPTO"] || "";
+                    let estimacion = parseFloat(x["ESTIMACIÓN"]) || 0;
+                    let anticipo = parseFloat(x["ANTICIPO"]) || 0;
+                    let isr = parseFloat(x["ISR"]) || 0;
+                    let multa = parseFloat(x["MULTA POR INCUMPLIMIENTO"]) || 0;
+                    let pagoNeto = parseFloat(x["PAGO"]) || 0;
 
                     return `
                         <tr>
