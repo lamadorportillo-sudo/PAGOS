@@ -37,12 +37,15 @@ function getSheet_() {
 function doGet(e) {
   try {
     const sheet = getSheet_();
-    const values = sheet.getDataRange().getDisplayValues();
+    const values = sheet.getDataRange().getValues();
     const headers = values.length ? values[0] : HEADERS;
-    const rows = values.slice(1).filter(r => r.some(v => String(v).trim() !== ''));
+    const rows = values.slice(1).filter(r => r.some(v => v !== '' && v !== null));
     const data = rows.map(row => {
       const obj = {};
-      headers.forEach((h, i) => obj[h] = row[i] !== undefined ? row[i] : '');
+      headers.forEach((h, i) => {
+        const value = row[i] !== undefined ? row[i] : '';
+        obj[h] = value instanceof Date ? value.toISOString() : value;
+      });
       return obj;
     });
 
@@ -88,7 +91,7 @@ function doPost(e) {
     sheet.appendRow(row);
     const last = sheet.getLastRow();
     if (last > 1) {
-      sheet.getRange(last, 10, 1, 8).setNumberFormat('L. #,##0.00');
+      sheet.getRange(last, 10, 1, 8).setNumberFormat('"L." #,##0.00');
     }
 
     return ContentService.createTextOutput(JSON.stringify({ok:true,row:last,message:'Registro guardado'}))
